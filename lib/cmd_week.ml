@@ -81,21 +81,22 @@ let report ?week () =
       issues
   end
 
-let create ?week ?(empty = false) ?issues:issue_numbers () =
+let manage ?week ?(empty = false) ?issues:issue_numbers () =
   let week_label = Option.value ~default:(current_week_label ()) week in
-  (* Check if milestone exists *)
+  (* Create or find milestone *)
   let milestones = Forge.list_milestones () in
+  let is_new = not (List.exists (fun (m : Types.milestone) -> m.title = week_label) milestones) in
   let ms =
     match List.find_opt (fun (m : Types.milestone) -> m.title = week_label) milestones with
-    | Some m ->
-      Printf.printf "Milestone %s already exists.\n" week_label;
-      m
+    | Some m -> m
     | None ->
       let m = Forge.create_milestone week_label in
       Printf.printf "Created milestone %s\n" week_label;
       m
   in
-  if empty then ()
+  if empty then (
+    if not is_new then Printf.printf "Milestone %s\n" week_label
+  )
   else
     match issue_numbers with
     | Some nums ->
@@ -112,22 +113,34 @@ let create ?week ?(empty = false) ?issues:issue_numbers () =
            Printf.printf "  Assigned #%d to %s\n" n week_label)
         num_list
     | None ->
-      (* Interactive TUI multi-select *)
+      (* Interactive TUI — show issues in milestone + unassigned *)
       let all_issues = Forge.list_issues ~state:"open" () in
-      let unassigned =
-        List.filter (fun (i : issue) -> i.milestone = None) all_issues
+      let in_milestone =
+        List.filter (fun (i : issue) ->
+          match i.milestone with
+          | Some m -> m.title = week_label
+          | None -> false
+        ) all_issues
       in
-      if unassigned = [] then
-        Printf.printf "No unassigned open issues in backlog.\n"
+      let in_milestone_numbers = List.map (fun (i : issue) -> i.number) in_milestone in
+      let relevant =
+        List.filter (fun (i : issue) ->
+          match i.milestone with
+          | None -> true
+          | Some m -> m.title = week_label
+        ) all_issues
+      in
+      if relevant = [] then
+        Printf.printf "No open issues available.\n"
       else begin
-        (* Sort: planned first, then idea, then rest *)
         let priority (i : issue) =
-          if List.exists (fun l -> l.name = "planned") i.labels then 0
+          if List.mem i.number in_milestone_numbers then -1
+          else if List.exists (fun l -> l.name = "planned") i.labels then 0
           else if List.exists (fun l -> l.name = "idea") i.labels then 2
           else 1
         in
         let sorted =
-          List.sort (fun a b -> compare (priority a) (priority b)) unassigned
+          List.sort (fun a b -> compare (priority a) (priority b)) relevant
         in
         let tui_items =
           List.map (fun (i : issue) ->
@@ -145,7 +158,7 @@ let create ?week ?(empty = false) ?issues:issue_numbers () =
             | [] -> "(none)"
             | ls -> String.concat " " (List.map (fun l -> "[" ^ l.name ^ "]") ls)
           in
-          let ms = match i.milestone with
+          let ms_title = match i.milestone with
             | Some m -> m.title | None -> "(none)"
           in
           let assignees = match i.assignees with
@@ -158,25 +171,36 @@ let create ?week ?(empty = false) ?issues:issue_numbers () =
              Assignees:  %s\n\
              \n\
              %s"
-            i.state labels ms assignees
+            i.state labels ms_title assignees
             (if i.body = "" then "(no description)" else i.body)
         in
         let title =
-          Printf.sprintf "Creating milestone %s — select issues from backlog:" week_label
+          Printf.sprintf "%s — select issues:" week_label
         in
-        let selected_numbers = Tui_select.run_select ~title ~detail_fn tui_items in
-        if selected_numbers = [] then
-          Printf.printf "No issues selected.\n"
-        else begin
-          Printf.printf "\nAssigning %d issues to %s:\n"
-            (List.length selected_numbers) week_label;
-          List.iter (fun n ->
-            let _ =
-              Forge.update_issue n
-                { iu_body = None; iu_labels = None;
-                  iu_milestone = Some ms.id; iu_state = None }
-            in
-            Printf.printf "  Assigned #%d to %s\n" n week_label
-          ) selected_numbers
-        end
+        match Tui_select.run_select ~title ~detail_fn ~preselected:in_milestone_numbers tui_items with
+        | None ->
+          Printf.printf "Cancelled.\n"
+        | Some selected_numbers ->
+          let to_add = List.filter (fun n -> not (List.mem n in_milestone_numbers)) selected_numbers in
+          let to_remove = List.filter (fun n -> not (List.mem n selected_numbers)) in_milestone_numbers in
+          if to_add = [] && to_remove = [] then
+            Printf.printf "No changes.\n"
+          else begin
+            List.iter (fun n ->
+              let _ =
+                Forge.update_issue n
+                  { iu_body = None; iu_labels = None;
+                    iu_milestone = Some ms.id; iu_state = None }
+              in
+              Printf.printf "  Assigned #%d to %s\n" n week_label
+            ) to_add;
+            List.iter (fun n ->
+              let _ =
+                Forge.update_issue n
+                  { iu_body = None; iu_labels = None;
+                    iu_milestone = Some 0; iu_state = None }
+              in
+              Printf.printf "  Removed #%d from %s\n" n week_label
+            ) to_remove
+          end
       end

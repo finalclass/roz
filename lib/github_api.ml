@@ -149,7 +149,10 @@ let update_issue info number (iu : issue_update) =
   let fields = ref [] in
   Option.iter (fun b -> fields := ("body", `String b) :: !fields) iu.iu_body;
   Option.iter (fun s -> fields := ("state", `String s) :: !fields) iu.iu_state;
-  Option.iter (fun m -> fields := ("milestone", `Int m) :: !fields) iu.iu_milestone;
+  (match iu.iu_milestone with
+   | None -> ()
+   | Some 0 -> fields := ("milestone", `Null) :: !fields
+   | Some m -> fields := ("milestone", `Int m) :: !fields);
   let json = `Assoc !fields in
   let body =
     api_patch info

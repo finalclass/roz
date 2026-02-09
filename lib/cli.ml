@@ -168,10 +168,10 @@ let week_report_cmd =
   Cmd.v (Cmd.info "report" ~doc:"Generate status report")
     Term.(const run $ week)
 
-(* roz week create *)
-let week_create_cmd =
+(* roz week (default — manage milestone) *)
+let week_default_term =
   let week =
-    Arg.(value & opt (some string) None & info [ "week"; "w" ] ~doc:"Week label")
+    Arg.(value & opt (some string) None & info [ "week"; "w" ] ~doc:"Week label (e.g. W07-2026)")
   in
   let empty =
     Arg.(value & flag & info [ "empty" ] ~doc:"Create empty milestone")
@@ -179,15 +179,14 @@ let week_create_cmd =
   let issues =
     Arg.(value & opt (some string) None & info [ "issues" ] ~doc:"Comma-separated issue numbers")
   in
-  let run week empty issues = Cmd_week.create ?week ~empty ?issues () in
-  Cmd.v (Cmd.info "create" ~doc:"Create milestone for current week")
-    Term.(const run $ week $ empty $ issues)
+  let run week empty issues = Cmd_week.manage ?week ~empty ?issues () in
+  Term.(const run $ week $ empty $ issues)
 
 (* roz week *)
 let week_cmd =
   let doc = "Manage weekly milestones" in
-  Cmd.group (Cmd.info "week" ~doc)
-    [ week_plan_cmd; week_report_cmd; week_create_cmd ]
+  Cmd.group ~default:week_default_term (Cmd.info "week" ~doc)
+    [ week_plan_cmd; week_report_cmd ]
 
 (* roz skill install *)
 let skill_install_cmd =

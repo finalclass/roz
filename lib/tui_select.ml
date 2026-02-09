@@ -36,9 +36,12 @@ type msg =
   | Confirm
   | Cancel
 
-let init ~title ~visible_height ~confirm_label ?detail_fn items =
+let init ~title ~visible_height ~confirm_label ?detail_fn ?(preselected = []) items =
   let items = Array.of_list items in
   let selected = Array.make (Array.length items) false in
+  Array.iteri (fun i item ->
+    if List.mem item.value preselected then selected.(i) <- true
+  ) items;
   ({ items; cursor = 0; selected; scroll_offset = 0;
      visible_height; confirmed = false; title;
      mode = Select; on_button = false;
@@ -246,12 +249,22 @@ let get_selected model =
     |> List.filter_map (fun (i, item) ->
          if model.selected.(i) then Some item.value else None)
 
-let run_select ~title ?(confirm_label = "Zatwierdź") ?detail_fn items =
-  let visible_height = min 15 (List.length items) in
-  let model = ref (fst (init ~title ~visible_height ~confirm_label ?detail_fn items)) in
+let terminal_rows () =
+  try
+    let ic = Unix.open_process_in "tput lines" in
+    let s = input_line ic in
+    ignore (Unix.close_process_in ic);
+    int_of_string (String.trim s)
+  with _ -> 24
+
+let run_select ~title ?(confirm_label = "Zatwierdź") ?detail_fn ?(preselected = []) items =
+  let rows = terminal_rows () in
+  let visible_height = max 5 (rows - 10) in
+  let model = ref (fst (init ~title ~visible_height ~confirm_label ?detail_fn ~preselected items)) in
   Mosaic.run
-    { init = (fun () -> init ~title ~visible_height ~confirm_label ?detail_fn items);
+    { init = (fun () -> init ~title ~visible_height ~confirm_label ?detail_fn ~preselected items);
       update = (fun msg m -> let m', cmd = update msg m in model := m'; (m', cmd));
       view;
       subscriptions };
-  get_selected !model
+  if !model.confirmed then Some (get_selected !model)
+  else None

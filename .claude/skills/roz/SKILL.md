@@ -1,4 +1,4 @@
-let skill_content = {|---
+---
 name: roz
 description: Manage development workflow - issues, PRs, milestones, and branches using the roz CLI
 ---
@@ -136,26 +136,3 @@ Look for issues labeled `idea` in the current milestone — these need technical
    ```bash
    roz issue update <N> --body-file plan.md --add-label planned --remove-label idea
    ```
-|}
-
-let rec mkdir_p path =
-  if Sys.file_exists path then ()
-  else begin
-    mkdir_p (Filename.dirname path);
-    (try Unix.mkdir path 0o755 with Unix.Unix_error (Unix.EEXIST, _, _) -> ())
-  end
-
-let install ~global () =
-  let target_dir =
-    if global then
-      let home = Sys.getenv "HOME" in
-      Filename.concat (Filename.concat home ".claude/skills") "roz"
-    else
-      Filename.concat ".claude/skills" "roz"
-  in
-  mkdir_p target_dir;
-  let target = Filename.concat target_dir "SKILL.md" in
-  let oc = open_out target in
-  output_string oc skill_content;
-  close_out oc;
-  Printf.printf "Installed skill to %s\n" target
