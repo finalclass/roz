@@ -1,0 +1,18 @@
+(version dev)
+
+(build
+ (all_platforms
+  ((action
+    (progn
+     (run find . -path "*/test/*/dune" -delete)
+     (run dune build -p toffee @install))))))
+
+(depends
+ (all_platforms
+  (ocaml dune)))
+
+(source
+ (fetch
+  (url git+https://github.com/tmattio/mosaic.git)))
+
+(dev)

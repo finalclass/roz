@@ -1,0 +1,3 @@
+(library
+ (name roz)
+ (libraries cmdliner yojson otoml unix mosaic))
