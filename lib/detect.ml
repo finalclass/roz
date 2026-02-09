@@ -35,23 +35,18 @@ let parse_url url =
   else
     None
 
+let has_config_section toml path =
+  match Otoml.find_result toml Otoml.get_table path with
+  | Ok _ -> true
+  | Error _ -> false
+
 let detect_forge_type config host =
   match config with
   | Some toml ->
-    let is_gitea =
-      try
-        ignore (Otoml.find_result toml Otoml.get_table [ "forge"; "gitea"; host ]);
-        true
-      with _ -> false
-    in
-    let is_github =
-      try
-        ignore (Otoml.find_result toml Otoml.get_table [ "forge"; "github"; host ]);
-        true
-      with _ -> false
-    in
-    if is_github then Types.Github
-    else if is_gitea then Types.Gitea
+    let is_gitea = has_config_section toml [ "forge"; "gitea"; host ] in
+    let is_github = has_config_section toml [ "forge"; "github"; host ] in
+    if is_gitea then Types.Gitea
+    else if is_github then Types.Github
     else if host = "github.com" then Types.Github
     else Types.Gitea
   | None ->
