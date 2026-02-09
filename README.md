@@ -19,9 +19,6 @@ ln -sf "$(pwd)/_build/default/bin/main.exe" ~/.local/bin/roz
 Create `~/.config/roz/config.toml`:
 
 ```toml
-[default]
-poll_interval = 30
-
 [forge.github."github.com"]
 token = "github_pat_..."
 
@@ -79,19 +76,6 @@ roz week create --empty           # create empty milestone
 roz week create --issues 34,37,41 # assign specific issues
 ```
 
-### Watch daemon
-
-Polls for new PR review comments and spawns Claude Code to address them.
-
-```bash
-roz watch                         # start daemon (default 30s interval)
-roz watch --interval 60           # custom poll interval
-roz watch --once                  # single check, then exit
-roz watch --dry-run               # show what would happen
-```
-
-Stop with `Ctrl+C`.
-
 ### Claude Code skill
 
 Install a skill file that teaches Claude Code how to use roz:
@@ -101,13 +85,19 @@ roz skill install                 # to .claude/skills/ in current repo
 roz skill install --global        # to ~/.claude/skills/
 ```
 
+Once installed, you can tell Claude Code things like:
+- "Sprawdź co jest do zrobienia" — checks PRs needing fixes, PRs ready to merge, issues to implement
+- "Popraw PR #123" — reads review comments, checks out branch, makes fixes, pushes
+- "Zaimplementuj issue #45" — creates branch, implements, opens PR
+- "Zaplanuj issue #12" — fleshes out idea with technical details
+
 ## Workflow
 
 1. **Ideas** — `roz issue create "one-liner idea"`
 2. **Planning** — flesh out with Claude Code, `roz issue update 123 --add-label planned`
 3. **Implementation** — Claude Code creates branch, implements, `roz pr create --issue 123`
 4. **Review** — developer reviews PR, leaves comments
-5. **Fixes** — `roz watch` detects comments, spawns Claude Code to fix
+5. **Fixes** — tell Claude Code "Popraw PR #123", it reads comments and pushes fixes
 6. **Merge** — developer merges approved PRs
 7. **Deploy** — Monday morning
 

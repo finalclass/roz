@@ -132,17 +132,39 @@ let create ?week ?(empty = false) ?issues:issue_numbers () =
         let tui_items =
           List.map (fun (i : issue) ->
             let labels =
-              String.concat "," (List.map (fun l -> l.name) i.labels)
+              String.concat " " (List.map (fun l -> "[" ^ l.name ^ "]") i.labels)
             in
             { Tui_select.value = i.number;
               label = Printf.sprintf "#%-5d  %s" i.number i.title;
               description = labels })
             sorted
         in
+        let detail_fn number =
+          let i = Forge.get_issue number in
+          let labels = match i.labels with
+            | [] -> "(none)"
+            | ls -> String.concat " " (List.map (fun l -> "[" ^ l.name ^ "]") ls)
+          in
+          let ms = match i.milestone with
+            | Some m -> m.title | None -> "(none)"
+          in
+          let assignees = match i.assignees with
+            | [] -> "(none)" | a -> String.concat ", " a
+          in
+          Printf.sprintf
+            "State:      %s\n\
+             Labels:     %s\n\
+             Milestone:  %s\n\
+             Assignees:  %s\n\
+             \n\
+             %s"
+            i.state labels ms assignees
+            (if i.body = "" then "(no description)" else i.body)
+        in
         let title =
           Printf.sprintf "Creating milestone %s — select issues from backlog:" week_label
         in
-        let selected_numbers = Tui_select.run_select ~title tui_items in
+        let selected_numbers = Tui_select.run_select ~title ~detail_fn tui_items in
         if selected_numbers = [] then
           Printf.printf "No issues selected.\n"
         else begin

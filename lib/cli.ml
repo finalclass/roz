@@ -189,23 +189,6 @@ let week_cmd =
   Cmd.group (Cmd.info "week" ~doc)
     [ week_plan_cmd; week_report_cmd; week_create_cmd ]
 
-(* roz watch *)
-let watch_cmd =
-  let interval =
-    Arg.(value & opt (some int) None & info [ "interval" ] ~doc:"Poll interval in seconds")
-  in
-  let once =
-    Arg.(value & flag & info [ "once" ] ~doc:"Run once and exit")
-  in
-  let dry_run =
-    Arg.(value & flag & info [ "dry-run" ] ~doc:"Show what would happen")
-  in
-  let run interval once dry_run =
-    Cmd_watch.run ?interval ~once ~dry_run ()
-  in
-  Cmd.v (Cmd.info "watch" ~doc:"Poll for events and react")
-    Term.(const run $ interval $ once $ dry_run)
-
 (* roz skill install *)
 let skill_install_cmd =
   let global =
@@ -225,6 +208,6 @@ let main_cmd =
   let doc = "Development workflow CLI for Gitea and GitHub" in
   let info = Cmd.info "roz" ~version:"0.1.0" ~doc in
   Cmd.group info
-    [ info_cmd; issue_cmd; pr_cmd; week_cmd; watch_cmd; skill_cmd ]
+    [ info_cmd; issue_cmd; pr_cmd; week_cmd; skill_cmd ]
 
 let run () = exit (Cmd.eval main_cmd)

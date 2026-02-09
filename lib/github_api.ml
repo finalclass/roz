@@ -1,5 +1,9 @@
 open Types
 
+let to_list_safe json =
+  let open Yojson.Safe.Util in
+  match json with `Null -> [] | _ -> to_list json
+
 let base_url = "https://api.github.com"
 
 let auth_headers info =
@@ -29,7 +33,7 @@ let parse_issue json =
     title = json |> member "title" |> to_string;
     body = json |> member "body" |> to_string_option |> Option.value ~default:"";
     state = json |> member "state" |> to_string;
-    labels = json |> member "labels" |> to_list |> List.map parse_label;
+    labels = json |> member "labels" |> to_list_safe |> List.map parse_label;
     milestone =
       (let m = json |> member "milestone" in
        if m = `Null then None else Some (parse_milestone m));
@@ -57,7 +61,7 @@ let parse_pr json =
       json |> member "head" |> member "ref" |> to_string;
     base_branch =
       json |> member "base" |> member "ref" |> to_string;
-    labels = json |> member "labels" |> to_list |> List.map parse_label;
+    labels = json |> member "labels" |> to_list_safe |> List.map parse_label;
     milestone =
       (let m = json |> member "milestone" in
        if m = `Null then None else Some (parse_milestone m)) }

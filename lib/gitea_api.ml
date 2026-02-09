@@ -1,5 +1,9 @@
 open Types
 
+let to_list_safe json =
+  let open Yojson.Safe.Util in
+  match json with `Null -> [] | _ -> to_list json
+
 let base_url info =
   Printf.sprintf "https://%s/api/v1" info.host
 
@@ -26,12 +30,12 @@ let parse_issue json =
     title = json |> member "title" |> to_string;
     body = json |> member "body" |> to_string_option |> Option.value ~default:"";
     state = json |> member "state" |> to_string;
-    labels = json |> member "labels" |> to_list |> List.map parse_label;
+    labels = json |> member "labels" |> to_list_safe |> List.map parse_label;
     milestone =
       (let m = json |> member "milestone" in
        if m = `Null then None else Some (parse_milestone m));
     assignees =
-      json |> member "assignees" |> to_list
+      json |> member "assignees" |> to_list_safe
       |> List.map (fun u -> u |> member "login" |> to_string) }
 
 let parse_comment json =
@@ -54,7 +58,7 @@ let parse_pr json =
       json |> member "head" |> member "label" |> to_string;
     base_branch =
       json |> member "base" |> member "label" |> to_string;
-    labels = json |> member "labels" |> to_list |> List.map parse_label;
+    labels = json |> member "labels" |> to_list_safe |> List.map parse_label;
     milestone =
       (let m = json |> member "milestone" in
        if m = `Null then None else Some (parse_milestone m)) }

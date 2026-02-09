@@ -24,11 +24,3 @@ let get_token config forge_type host =
                |> Result.get_ok)
      with _ -> None)
   | None -> None
-
-let get_poll_interval config =
-  match config with
-  | Some toml ->
-    (try Otoml.find_result toml Otoml.get_integer [ "default"; "poll_interval" ]
-         |> Result.get_ok
-     with _ -> 30)
-  | None -> 30
