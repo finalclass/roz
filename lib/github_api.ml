@@ -168,12 +168,8 @@ let close_issue info number =
 
 (* PRs *)
 
-let list_prs info ?state () =
-  let query =
-    match state with
-    | Some s -> "?state=" ^ s
-    | None -> ""
-  in
+let list_prs info ?(state = "open") () =
+  let query = "?state=" ^ state in
   let body = api_get info (repo_path info ^ "/pulls" ^ query) in
   Yojson.Safe.from_string body |> Yojson.Safe.Util.to_list
   |> List.map parse_pr
