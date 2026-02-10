@@ -68,7 +68,11 @@ let create ~issue ?branch ?base ?title ?draft:_ () =
       ignore (Unix.close_process_in ic);
       b
   in
-  let base_branch = Option.value ~default:"main" base in
+  let base_branch =
+    match base with
+    | Some b -> b
+    | None -> Detect.default_branch ()
+  in
   let pr_title =
     match title with
     | Some t -> t

@@ -61,6 +61,31 @@ let get_remote_url ?(remote = "origin") () =
   let _ = Unix.close_process_in ic in
   url
 
+let ref_exists ref_name =
+  let argv = [| "git"; "rev-parse"; "--verify"; "--quiet"; ref_name |] in
+  let ic = Unix.open_process_args_in "git" argv in
+  let _ = try ignore (input_line ic) with End_of_file -> () in
+  match Unix.close_process_in ic with
+  | Unix.WEXITED 0 -> true
+  | _ -> false
+
+let default_branch ?(remote = "origin") () =
+  (* Try symbolic-ref first *)
+  let argv = [| "git"; "symbolic-ref"; Printf.sprintf "refs/remotes/%s/HEAD" remote |] in
+  let ic = Unix.open_process_args_in "git" argv in
+  let line = try Some (String.trim (input_line ic)) with End_of_file -> None in
+  let _ = Unix.close_process_in ic in
+  match line with
+  | Some ref_str ->
+    let prefix = Printf.sprintf "refs/remotes/%s/" remote in
+    if String.starts_with ~prefix ref_str then
+      String.sub ref_str (String.length prefix) (String.length ref_str - String.length prefix)
+    else if ref_exists (remote ^ "/main") then "main"
+    else "master"
+  | None ->
+    if ref_exists (remote ^ "/main") then "main"
+    else "master"
+
 let detect () =
   let config = Config.load () in
   match get_remote_url () with
